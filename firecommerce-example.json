@@ -1,0 +1,29 @@
+{
+  "skus" : [ {
+    "state" : {
+      "brand" : "Unilever",
+      "name" : "Dove",
+      "quantity" : 10
+    }
+  }, {
+    "state" : {
+      "brand" : "P&G",
+      "name" : "Pantene",
+      "quantity" : 8
+    }
+  } ],
+  "users" : [ {
+    "notifications" : {
+      "-Jf-ouuQiU0YZ3BcnG77" : {
+        "state" : {
+          "ntype" : "order",
+          "status" : "completed"
+        }
+      }
+    },
+    "state" : {
+      "age" : 26,
+      "name" : "Pedro"
+    }
+  } ]
+}
