@@ -18,7 +18,7 @@ package com.pasviegas.firecommerce.domain.stock
 
 import akka.actor.{ ActorRef, Props }
 import com.firebase.client.{ DataSnapshot, Firebase }
-import com.pasviegas.firecommerce.domain.stock.messages.{ CompleteOrder, MakeOrder }
+import com.pasviegas.firecommerce.domain.stock.messages.{ CannotCompleteOrder, CompleteOrder, MakeOrder }
 import com.pasviegas.firecommerce.domain.stock.models.Order
 import com.pasviegas.firecommerce.domain.users.models.Notification
 import com.pasviegas.firekka.actors.FirebaseActor
@@ -35,18 +35,33 @@ class OrderManager(sku: ActorRef, firebase: Firebase)
       Success(Order(ds))
   }
 
-  override def receive: Receive = {
-    case Added(ds)            => updateState(ds).foreach(makeOrder)
-    case Removed(ds)          => updateState(ds).foreach(log[Order]("removed"))
-    case CompleteOrder(order) => completeOrder(order)
-    case other                => unhandled(other)
+  override def receive: Receive =
+    handleFirebaseEvents.orElse(handleOrderEvents)
+
+  def handleFirebaseEvents: Receive = {
+    case Added(ds)   => updateState(ds).foreach(makeOrder)
+    case Removed(ds) => updateState(ds).foreach(logEvent[Order]("removed"))
+  }
+
+  def handleOrderEvents: Receive = {
+    case CompleteOrder(order)       => completeOrder(order)
+    case CannotCompleteOrder(order) => cannotCompleteOrder(order)
   }
 
   private[this] def makeOrder(order: Order) = sku ! MakeOrder(order)
 
-  private[this] def completeOrder(order: Order) = {
+  private[this] def cannotCompleteOrder(order: Order) =
+    notifyUser(order, "not-completed")
+
+  private[this] def completeOrder(order: Order) =
+    notifyUser(order, "completed")
+
+  private[this] def completePartialOrder(order: Order) =
+    notifyUser(order, "partial")
+
+  def notifyUser(order: Order, status: String) {
     firebase.getRoot.child(s"users/${order.user}/notifications")
-      .pushChild(Notification("order", "completed"))
+      .pushChild(Notification("order", status))
     firebase.removeValue()
   }
 

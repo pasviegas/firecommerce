@@ -18,7 +18,7 @@ package com.pasviegas.firecommerce.domain.stock
 
 import akka.actor.Props
 import com.firebase.client.{ DataSnapshot, Firebase }
-import com.pasviegas.firecommerce.domain.stock.messages.{ CompleteOrder, MakeOrder }
+import com.pasviegas.firecommerce.domain.stock.messages.{ CannotCompleteOrder, CompleteOrder, MakeOrder }
 import com.pasviegas.firecommerce.domain.stock.models.{ Order, Sku }
 import com.pasviegas.firekka.actors.FirebaseActor
 import com.pasviegas.firekka.actors.firebase.FirebaseEvents.{ Added, Changed, Removed }
@@ -35,22 +35,29 @@ class SkuManager(firebase: Firebase)
       Success(Sku(ds))
   }
 
-  override def receive: Receive = {
+  override def receive: Receive =
+    handleFirebaseEvents.orElse(handleOrderEvents)
+
+  def handleFirebaseEvents: Receive = {
     case Added(ds) => ds.getKey match {
       case "orders" => attachChildren(ds, FirebaseActorCreator(OrderManager.props(self)))
-      case "state"  => updateState(ds).foreach(log[Sku]("added"))
+      case "state"  => updateState(ds).foreach(logEvent[Sku]("added"))
     }
-    case Changed(ds)      => updateState(ds).foreach(log[Sku]("changed"))
-    case Removed(ds)      => updateState(ds).foreach(log[Sku]("removed"))
-    case MakeOrder(order) => makeOrder(order)
-    case other            => unhandled(other)
+    case Changed(ds) => updateState(ds).foreach(logEvent[Sku]("changed"))
+    case Removed(ds) => updateState(ds).foreach(logEvent[Sku]("removed"))
   }
 
-  private[this] def makeOrder(order: Order) =
-    state.foreach(sku => {
-      firebase.setState(sku.minus(order.quantity))
-      sender ! CompleteOrder(order)
-    })
+  def handleOrderEvents: Receive = {
+    case MakeOrder(order) => tryCompleteOrder(order)
+  }
+
+  private[this] def tryCompleteOrder(order: Order) =
+    state.foreach {
+      case sku if sku.quantity >= order.quantity =>
+        firebase.setState(sku.minus(order.quantity))
+        sender ! CompleteOrder(order)
+      case _ => sender ! CannotCompleteOrder(order)
+    }
 }
 
 object SkuManager {

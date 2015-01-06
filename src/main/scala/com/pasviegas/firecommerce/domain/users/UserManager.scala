@@ -37,10 +37,10 @@ class UserManager(firebase: Firebase)
   override def receive: Receive = {
     case Added(ds) => ds.getKey match {
       case "notifications" => attachChildren(ds, FirebaseActorCreator(NotificationManager.props(self)))
-      case "state"         => updateState(ds).foreach(log[User]("added"))
+      case "state"         => updateState(ds).foreach(logEvent[User]("added"))
     }
-    case Changed(ds) => updateState(ds).foreach(log[User]("changed"))
-    case Removed(ds) => updateState(ds).foreach(log[User]("removed"))
+    case Changed(ds) => updateState(ds).foreach(logEvent[User]("changed"))
+    case Removed(ds) => updateState(ds).foreach(logEvent[User]("removed"))
     case other       => unhandled(other)
   }
 

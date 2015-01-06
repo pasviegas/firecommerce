@@ -34,9 +34,9 @@ class NotificationManager(user: ActorRef, firebase: Firebase)
   }
 
   override def receive: Receive = {
-    case Added(ds)   => updateState(ds).foreach(log[Notification]("added"))
-    case Changed(ds) => updateState(ds).foreach(log[Notification]("changed"))
-    case Removed(ds) => updateState(ds).foreach(log[Notification]("removed"))
+    case Added(ds)   => updateState(ds).foreach(logEvent[Notification]("added"))
+    case Changed(ds) => updateState(ds).foreach(logEvent[Notification]("changed"))
+    case Removed(ds) => updateState(ds).foreach(logEvent[Notification]("removed"))
     case other       => unhandled(other)
   }
 
